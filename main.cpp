@@ -183,3 +183,198 @@ void validatePassport(const string& passport)
 
     for (char c : passport)
         if (!isalnum(c))
+            throw InvalidPassportException();
+}
+
+// Validates that seat count is positive
+void validateSeats(int seats)
+{
+    if (seats <= 0)
+        throw InvalidSeatsException();
+}
+
+// Validates that a location string has no digits
+void validateLocation(const string& loc, const string& fieldName = "Location")
+{
+    if (loc.empty())
+        throw InvalidLocationException(fieldName);
+
+    for (char c : loc)
+        if (isdigit(c))
+            throw InvalidLocationException(fieldName);
+}
+
+// Validates that a departure time string is not empty
+void validateDepartureTime(const string& dt)
+{
+    if (dt.empty())
+        throw InvalidDepartureTimeException();
+}
+
+// ============================================================
+//  DATA CLASSES
+// ============================================================
+
+class Passenger
+{
+public:
+    int    id;
+    string name;
+    string passport;
+
+    Passenger() : id(0), name(""), passport("") {}
+
+    // Prompts the user to fill in all passenger fields with validation
+    void input()
+    {
+        while (true)
+        {
+            try
+            {
+                cout << "Enter Passenger ID   : ";
+                id = readInt("Passenger ID");
+                validateID(id, "Passenger ID");
+                break;
+            }
+            catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+        }
+
+        while (true)
+        {
+            try
+            {
+                cout << "Enter Name           : ";
+                getline(cin, name);
+                validateName(name, "Passenger Name");
+                break;
+            }
+            catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+        }
+
+        while (true)
+        {
+            try
+            {
+                cout << "Enter Passport Number: ";
+                getline(cin, passport);
+                validatePassport(passport);
+                break;
+            }
+            catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+        }
+    }
+
+    void display() const
+    {
+        cout << "ID: " << id
+            << " | Name: " << name
+            << " | Passport: " << passport
+            << endl;
+    }
+};
+
+// -------------------------------------------------------
+
+class Flight
+{
+public:
+    int    flightNo;
+    string source;
+    string destination;
+    string departureTime;
+    int    seats;
+    string status;
+
+    Flight() : flightNo(0), seats(0), status("Scheduled") {}
+
+    // Prompts the user to fill in all flight fields with validation
+    void input()
+    {
+        while (true)
+        {
+            try
+            {
+                cout << "Enter Flight No     : ";
+                flightNo = readInt("Flight No");
+                validateID(flightNo, "Flight No");
+                break;
+            }
+            catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+        }
+
+        while (true)
+        {
+            try
+            {
+                cout << "Source              : ";
+                getline(cin, source);
+                validateLocation(source, "Source");
+                break;
+            }
+            catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+        }
+
+        while (true)
+        {
+            try
+            {
+                cout << "Destination         : ";
+                getline(cin, destination);
+                validateLocation(destination, "Destination");
+                break;
+            }
+            catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+        }
+
+        while (true)
+        {
+            try
+            {
+                cout << "Departure Time      : ";
+                getline(cin, departureTime);
+                validateDepartureTime(departureTime);
+                break;
+            }
+            catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+        }
+
+        while (true)
+        {
+            try
+            {
+                cout << "Available Seats     : ";
+                seats = readInt("Available Seats");
+                validateSeats(seats);
+                break;
+            }
+            catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+        }
+
+        status = "Scheduled";
+    }
+
+    void display() const
+    {
+        cout << "Flight No: " << flightNo
+            << " | " << source << " -> " << destination
+            << " | Departure: " << departureTime
+            << " | Seats: " << seats
+            << " | Status: " << status
+            << endl;
+    }
+};
+
+// -------------------------------------------------------
+
+class Crew
+{
+public:
+    int    id;
+    string name;
+    string role;
+
+    Crew() : id(0), name(""), role("") {}
+
+    // Prompts the user to fill in all crew fields with validation
+    void input()
+    {
