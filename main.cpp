@@ -378,3 +378,92 @@ public:
     // Prompts the user to fill in all crew fields with validation
     void input()
     {
+                while (true)
+        {
+            try
+            {
+                cout << "Enter Crew ID : ";
+                id = readInt("Crew ID");
+                validateID(id, "Crew ID");
+                break;
+            }
+            catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+        }
+
+        while (true)
+        {
+            try
+            {
+                cout << "Name          : ";
+                getline(cin, name);
+                validateName(name, "Crew Name");
+                break;
+            }
+            catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+        }
+
+        while (true)
+        {
+            try
+            {
+                cout << "Role          : ";
+                getline(cin, role);
+                validateName(role, "Crew Role");  // role uses same rule: letters and spaces only
+                break;
+            }
+            catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+        }
+    }
+
+    void display() const
+    {
+        cout << "ID: " << id
+            << " | Name: " << name
+            << " | Role: " << role
+            << endl;
+    }
+};
+
+// -------------------------------------------------------
+
+class Booking
+{
+public:
+    int       bookingID;
+    Passenger p;
+    Flight    f;
+
+    Booking() : bookingID(0) {}
+
+    void display() const
+    {
+        cout << "\nBooking ID: " << bookingID << "\n";
+        cout << "Passenger -> "; p.display();
+        cout << "Flight    -> "; f.display();
+    }
+};
+
+// ============================================================
+//  FILE HANDLER
+//  Responsible for all read/write operations on data files
+// ============================================================
+
+class FileHandler
+{
+public:
+    // ---------- Append single records ----------
+
+    void savePassenger(const Passenger& p)
+    {
+        ofstream file("passengers.txt", ios::app);
+        if (!file.is_open()) throw FileException("passengers.txt");
+        file << p.id << "|" << p.name << "|" << p.passport << "\n";
+    }
+
+    void saveFlight(const Flight& f)
+    {
+        ofstream file("flights.txt", ios::app);
+        if (!file.is_open()) throw FileException("flights.txt");
+        file << f.flightNo << "|" << f.source << "|" << f.destination << "|"
+            << f.departureTime << "|" << f.seats << "|" << f.status << "\n";
+    }
