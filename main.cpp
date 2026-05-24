@@ -467,3 +467,144 @@ public:
         file << f.flightNo << "|" << f.source << "|" << f.destination << "|"
             << f.departureTime << "|" << f.seats << "|" << f.status << "\n";
     }
+
+        void saveCrew(const Crew& c)
+    {
+        ofstream file("crew.txt", ios::app);
+        if (!file.is_open()) throw FileException("crew.txt");
+        file << c.id << "|" << c.name << "|" << c.role << "\n";
+    }
+
+    void saveBooking(const Booking& b)
+    {
+        ofstream file("bookings.txt", ios::app);
+        if (!file.is_open()) throw FileException("bookings.txt");
+        file << b.bookingID << "|" << b.p.id << "|" << b.f.flightNo << "\n";
+    }
+
+    // ---------- Overwrite entire file (used after deletions) ----------
+
+    void rewritePassengersFile(const Passenger passengers[], int count)
+    {
+        ofstream file("passengers.txt");
+        if (!file.is_open()) throw FileException("passengers.txt");
+        for (int i = 0; i < count; i++)
+            file << passengers[i].id << "|" << passengers[i].name << "|" << passengers[i].passport << "\n";
+    }
+
+    void rewriteFlightsFile(const Flight flights[], int count)
+    {
+        ofstream file("flights.txt");
+        if (!file.is_open()) throw FileException("flights.txt");
+        for (int i = 0; i < count; i++)
+            file << flights[i].flightNo << "|" << flights[i].source << "|" << flights[i].destination << "|"
+            << flights[i].departureTime << "|" << flights[i].seats << "|" << flights[i].status << "\n";
+    }
+
+    void rewriteCrewFile(const Crew crewList[], int count)
+    {
+        ofstream file("crew.txt");
+        if (!file.is_open()) throw FileException("crew.txt");
+        for (int i = 0; i < count; i++)
+            file << crewList[i].id << "|" << crewList[i].name << "|" << crewList[i].role << "\n";
+    }
+
+    void rewriteBookingsFile(const Booking bookings[], int count)
+    {
+        ofstream file("bookings.txt");
+        if (!file.is_open()) throw FileException("bookings.txt");
+        for (int i = 0; i < count; i++)
+            file << bookings[i].bookingID << "|" << bookings[i].p.id << "|" << bookings[i].f.flightNo << "\n";
+    }
+};
+
+// ============================================================
+//  PASSENGER MANAGER
+// ============================================================
+
+class PassengerManager
+{
+public:
+    Passenger   passengers[MAX_RECORDS];
+    int         count;
+    FileHandler fh;
+
+    PassengerManager() : count(0) { loadPassengersFromFile(); }
+
+    // Loads all passenger records from disk into memory on startup
+    void loadPassengersFromFile()
+    {
+        ifstream file("passengers.txt");
+        if (!file.is_open()) return;  // file may not exist yet — that's fine
+
+        string line;
+        while (getline(file, line) && count < MAX_RECORDS)
+        {
+            try
+            {
+                stringstream ss(line);
+                Passenger p;
+                string temp;
+
+                getline(ss, temp, '|');
+                if (temp.empty()) continue;
+
+                p.id = stoi(temp);
+                getline(ss, p.name, '|');
+                getline(ss, p.passport);
+
+                passengers[count++] = p;
+            }
+            catch (const invalid_argument&)
+            {
+                cout << "[Load Warning] Skipping corrupt passenger record: " << line << "\n";
+            }
+            catch (const out_of_range&)
+            {
+                cout << "[Load Warning] ID out of range in passenger record: " << line << "\n";
+            }
+        }
+    }
+
+    // Returns the array index of a passenger by ID, or -1 if not found
+    int findPassengerIndex(int id) const
+    {
+        for (int i = 0; i < count; i++)
+            if (passengers[i].id == id) return i;
+        return -1;
+    }
+
+    // Adds a passenger; returns true on success, false on duplicate/full
+    bool addPassenger(const Passenger& p)
+    {
+        try
+        {
+            if (count >= MAX_RECORDS)
+                throw StorageFullException("Passenger storage");
+
+            if (findPassengerIndex(p.id) != -1)
+                throw DuplicateIDException("Passenger");
+
+            passengers[count++] = p;
+            fh.savePassenger(p);
+            return true;
+        }
+        catch (const AirlineException& e)
+        {
+            cout << "[Error] " << e.what() << "\n";
+            return false;
+        }
+    }
+
+    void removePassenger()
+    {
+        try
+        {
+            if (count == 0)
+                throw NoRecordsException("passengers");
+
+            int id;
+            while (true)
+            {
+                try
+                {
