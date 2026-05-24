@@ -948,3 +948,233 @@ public:
                     validateID(id, "Crew ID");
                     break;
                 }
+                                catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+            }
+
+            int index = findCrewIndex(id);
+            if (index == -1)
+                throw RecordNotFoundException("Crew member");
+
+            for (int j = index; j < count - 1; j++)
+                crewList[j] = crewList[j + 1];
+
+            count--;
+            fh.rewriteCrewFile(crewList, count);
+            cout << "Crew member removed successfully.\n";
+        }
+        catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+    }
+
+    void viewCrew() const
+    {
+        try
+        {
+            if (count == 0)
+                throw NoRecordsException("crew members");
+
+            cout << "\n--- Crew List ---\n";
+            for (int i = 0; i < count; i++)
+                crewList[i].display();
+        }
+        catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+    }
+};
+
+// ============================================================
+//  BOOKING MANAGER
+// ============================================================
+
+class BookingManager
+{
+public:
+    Booking     bookings[MAX_RECORDS];
+    int         count;
+    int         nextBookingID;
+    FileHandler fh;
+
+    BookingManager() : count(0), nextBookingID(1) {}
+
+    // Loads bookings from disk; needs passenger and flight managers to resolve references
+    void loadBookingsFromFile(const PassengerManager& pm, const FlightManager& fm)
+    {
+        ifstream file("bookings.txt");
+        if (!file.is_open()) return;
+
+        string line;
+        int maxID = 0;
+
+        while (getline(file, line) && count < MAX_RECORDS)
+        {
+            try
+            {
+                stringstream ss(line);
+                Booking b;
+                string temp;
+                int passengerID, flightNo;
+
+                getline(ss, temp, '|');
+                if (temp.empty()) continue;
+                b.bookingID = stoi(temp);
+
+                getline(ss, temp, '|');
+                passengerID = stoi(temp);
+
+                getline(ss, temp);
+                flightNo = stoi(temp);
+
+                int passengerIndex = pm.findPassengerIndex(passengerID);
+                int flightIndex = fm.findFlightIndex(flightNo);
+
+                // Only load booking if both the passenger and flight still exist
+                if (passengerIndex != -1 && flightIndex != -1)
+                {
+                    b.p = pm.passengers[passengerIndex];
+                    b.f = fm.flights[flightIndex];
+                    bookings[count++] = b;
+
+                    if (b.bookingID > maxID) maxID = b.bookingID;
+                }
+            }
+            catch (const invalid_argument&)
+            {
+                cout << "[Load Warning] Skipping corrupt booking record: " << line << "\n";
+            }
+            catch (const out_of_range&)
+            {
+                cout << "[Load Warning] Value out of range in booking record: " << line << "\n";
+            }
+        }
+
+        nextBookingID = maxID + 1;
+    }
+
+    // Returns the array index of a booking by booking ID, or -1 if not found
+    int findBookingIndex(int bookingID) const
+    {
+        for (int i = 0; i < count; i++)
+            if (bookings[i].bookingID == bookingID) return i;
+        return -1;
+    }
+
+    void rewriteBookingsFile()
+    {
+        fh.rewriteBookingsFile(bookings, count);
+    }
+
+    void bookFlight(PassengerManager& pm, FlightManager& fm)
+    {
+        try
+        {
+            if (fm.count == 0)
+                throw NoRecordsException("flights");
+
+            if (count >= MAX_RECORDS)
+                throw StorageFullException("Booking storage");
+
+            fm.viewFlights();
+
+            int fid;
+            while (true)
+            {
+                try
+                {
+                    cout << "Enter Flight No: ";
+                    fid = readInt("Flight No");
+                    validateID(fid, "Flight No");
+                    break;
+                }
+                catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+            }
+
+            int flightIndex = fm.findFlightIndex(fid);
+            if (flightIndex == -1)
+                throw RecordNotFoundException("Flight");
+
+            if (fm.flights[flightIndex].status == "In Air")
+                throw FlightInAirException();
+
+            if (fm.flights[flightIndex].seats <= 0)
+                throw NoSeatsAvailableException();
+
+            // Collect passenger details
+            Passenger temp;
+            temp.input();
+
+            if (!pm.addPassenger(temp))
+                throw AirlineException("Booking unsuccessful — passenger could not be added.");
+
+            // Build the booking record
+            Booking b;
+            b.bookingID = nextBookingID;
+            b.p = temp;
+            b.f = fm.flights[flightIndex];
+
+            // Decrement available seats on the chosen flight
+            fm.flights[flightIndex].seats--;
+            fm.rewriteFlightsFile();
+
+            bookings[count++] = b;
+            fh.saveBooking(b);
+            nextBookingID++;
+
+            cout << "Booking successful! Your Booking ID is " << b.bookingID << ".\n";
+        }
+        catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+    }
+
+    void cancelBooking(FlightManager& fm)
+    {
+        try
+        {
+            if (count == 0)
+                throw NoRecordsException("bookings");
+
+            int id;
+            while (true)
+            {
+                try
+                {
+                    cout << "Enter Booking ID: ";
+                    id = readInt("Booking ID");
+                    validateID(id, "Booking ID");
+                    break;
+                }
+                catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+            }
+
+            int bookingIndex = findBookingIndex(id);
+            if (bookingIndex == -1)
+                throw RecordNotFoundException("Booking");
+
+            // Restore the seat on the corresponding flight (if it still exists)
+            int flightIndex = fm.findFlightIndex(bookings[bookingIndex].f.flightNo);
+            if (flightIndex != -1)
+            {
+                fm.flights[flightIndex].seats++;
+                fm.rewriteFlightsFile();
+            }
+
+            for (int j = bookingIndex; j < count - 1; j++)
+                bookings[j] = bookings[j + 1];
+
+            count--;
+            rewriteBookingsFile();
+            cout << "Booking cancelled successfully.\n";
+        }
+        catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+    }
+
+    void viewBookings() const
+    {
+        try
+        {
+            if (count == 0)
+                throw NoRecordsException("bookings");
+
+            cout << "\n--- Booking List ---\n";
+            for (int i = 0; i < count; i++)
+                bookings[i].display();
+        }
+        catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+    }
+};
