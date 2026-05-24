@@ -1178,3 +1178,194 @@ public:
         catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
     }
 };
+
+// ============================================================
+//  AIRLINE SYSTEM  (ties all managers together + menus)
+// ============================================================
+
+class AirlineSystem
+{
+public:
+    PassengerManager pm;
+    FlightManager    fm;
+    CrewManager      cm;
+    BookingManager   bm;
+
+    AirlineSystem()
+    {
+        // Bookings reference passengers and flights, so load those first
+        bm.loadBookingsFromFile(pm, fm);
+    }
+
+    bool staffLogin()
+    {
+        string username, password;
+
+        const string correctUsername = "admin";
+        const string correctPassword = "1234";
+
+        cout << "\n=== Staff Login ===\n";
+
+        cout << "Enter Username: ";
+        getline(cin, username);
+
+        cout << "Enter Password: ";
+        getline(cin, password);
+
+        if (username == correctUsername && password == correctPassword)
+        {
+            cout << "Login Successful!\n";
+            return true;
+        }
+        else
+        {
+            cout << "Invalid Username or Password!\n";
+            return false;
+        }
+    }
+
+    void staffMenu()
+    {
+        int choice;
+        do
+        {
+            cout << "\n=== Staff Menu ===\n"
+                << " 1.  Add Flight\n"
+                << " 2.  Remove Flight\n"
+                << " 3.  Add Crew\n"
+                << " 4.  Remove Crew\n"
+                << " 5.  Remove Passenger\n"
+                << " 6.  View Passengers\n"
+                << " 7.  View Flights\n"
+                << " 8.  View Crew\n"
+                << " 9.  View Bookings\n"
+                << "10.  Update Flight Status\n"
+                << "11.  View Flights In Air\n"
+                << "12.  Back\n";
+
+            try
+            {
+                cout << "Enter Choice: ";
+                choice = readInt("Menu choice");
+
+                switch (choice)
+                {
+                case  1: fm.addFlight();          break;
+                case  2: fm.removeFlight();        break;
+                case  3: cm.addCrew();             break;
+                case  4: cm.removeCrew();          break;
+                case  5: pm.removePassenger();     break;
+                case  6: pm.viewPassengers();      break;
+                case  7: fm.viewFlights();         break;
+                case  8: cm.viewCrew();            break;
+                case  9: bm.viewBookings();        break;
+                case 10: fm.updateFlightStatus();  break;
+                case 11: fm.viewFlightsInAir();    break;
+                case 12: break;
+                default: throw InvalidMenuChoiceException();
+                }
+            }
+            catch (const AirlineException& e)
+            {
+                cout << "[Error] " << e.what() << "\n";
+                choice = 0;  // keep the loop running
+            }
+
+        } while (choice != 12);
+    }
+
+    void customerMenu()
+    {
+        int choice;
+        do
+        {
+            cout << "\n=== Customer Menu ===\n"
+                << "1. View Flights\n"
+                << "2. Book Flight\n"
+                << "3. Cancel Booking\n"
+                << "4. View Bookings\n"
+                << "5. Flights In Air\n"
+                << "6. Back\n";
+
+            try
+            {
+                cout << "Enter Choice: ";
+                choice = readInt("Menu choice");
+
+                switch (choice)
+                {
+                case 1: fm.viewFlights();           break;
+                case 2: bm.bookFlight(pm, fm);      break;
+                case 3: bm.cancelBooking(fm);       break;
+                case 4: bm.viewBookings();          break;
+                case 5: fm.viewFlightsInAir();      break;
+                case 6: break;
+                default: throw InvalidMenuChoiceException();
+                }
+            }
+            catch (const AirlineException& e)
+            {
+                cout << "[Error] " << e.what() << "\n";
+                choice = 0;
+            }
+
+        } while (choice != 6);
+    }
+
+    void menu()
+    {
+        int choice;
+        do
+        {
+            cout << "\n============================\n"
+                << "  AIRLINE MANAGEMENT SYSTEM\n"
+                << "============================\n"
+                << "1. Staff\n"
+                << "2. Customer\n"
+                << "3. Exit\n";
+
+            try
+            {
+                cout << "Enter Choice: ";
+                choice = readInt("Menu choice");
+
+                switch (choice)
+                {
+                case 1:
+                    if (staffLogin())
+                        staffMenu();
+                    break;
+                case 2: customerMenu();            break;
+                case 3: cout << "Goodbye!\n";      break;
+                default: throw InvalidMenuChoiceException();
+                }
+            }
+            catch (const AirlineException& e)
+            {
+                cout << "[Error] " << e.what() << "\n";
+                choice = 0;
+            }
+
+        } while (choice != 3);
+    }
+};
+
+// ============================================================
+//  ENTRY POINT
+// ============================================================
+
+int main()
+{
+    try
+    {
+        AirlineSystem system;
+        system.menu();
+    }
+    catch (const exception& e)
+    {
+        cout << "[Fatal Error] " << e.what() << "\n";
+        return 1;
+    }
+
+    return 0;
+}
