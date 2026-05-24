@@ -608,3 +608,223 @@ public:
             {
                 try
                 {
+                                        cout << "Enter Passenger ID to remove: ";
+                    id = readInt("Passenger ID");
+                    validateID(id, "Passenger ID");
+                    break;
+                }
+                catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+            }
+
+            int index = findPassengerIndex(id);
+            if (index == -1)
+                throw RecordNotFoundException("Passenger");
+
+            // Shift remaining records left to fill the gap
+            for (int j = index; j < count - 1; j++)
+                passengers[j] = passengers[j + 1];
+
+            count--;
+            fh.rewritePassengersFile(passengers, count);
+            cout << "Passenger removed successfully.\n";
+        }
+        catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+    }
+
+    void viewPassengers() const
+    {
+        try
+        {
+            if (count == 0)
+                throw NoRecordsException("passengers");
+
+            cout << "\n--- Passenger List ---\n";
+            for (int i = 0; i < count; i++)
+                passengers[i].display();
+        }
+        catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+    }
+};
+
+// ============================================================
+//  FLIGHT MANAGER
+// ============================================================
+
+class FlightManager
+{
+public:
+    Flight      flights[MAX_RECORDS];
+    int         count;
+    FileHandler fh;
+
+    FlightManager() : count(0) { loadFlightsFromFile(); }
+
+    // Loads all flight records from disk into memory on startup
+    void loadFlightsFromFile()
+    {
+        ifstream file("flights.txt");
+        if (!file.is_open()) return;
+
+        string line;
+        while (getline(file, line) && count < MAX_RECORDS)
+        {
+            try
+            {
+                stringstream ss(line);
+                Flight f;
+                string temp;
+
+                getline(ss, temp, '|');
+                if (temp.empty()) continue;
+
+                f.flightNo = stoi(temp);
+                getline(ss, f.source, '|');
+                getline(ss, f.destination, '|');
+                getline(ss, f.departureTime, '|');
+
+                getline(ss, temp, '|');
+                f.seats = stoi(temp);
+
+                getline(ss, f.status);
+                flights[count++] = f;
+            }
+            catch (const invalid_argument&)
+            {
+                cout << "[Load Warning] Skipping corrupt flight record: " << line << "\n";
+            }
+            catch (const out_of_range&)
+            {
+                cout << "[Load Warning] Value out of range in flight record: " << line << "\n";
+            }
+        }
+    }
+
+    // Returns the array index of a flight by flight number, or -1 if not found
+    int findFlightIndex(int flightNo) const
+    {
+        for (int i = 0; i < count; i++)
+            if (flights[i].flightNo == flightNo) return i;
+        return -1;
+    }
+
+    // Convenience: rewrites the entire flights file (e.g. after any change)
+    void rewriteFlightsFile()
+    {
+        fh.rewriteFlightsFile(flights, count);
+    }
+
+    void addFlight()
+    {
+        try
+        {
+            if (count >= MAX_RECORDS)
+                throw StorageFullException("Flight storage");
+
+            Flight temp;
+            temp.input();
+
+            if (findFlightIndex(temp.flightNo) != -1)
+                throw DuplicateIDException("Flight");
+
+            flights[count++] = temp;
+            fh.saveFlight(temp);
+            cout << "Flight added successfully.\n";
+        }
+        catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+    }
+
+    void removeFlight()
+    {
+        try
+        {
+            if (count == 0)
+                throw NoRecordsException("flights");
+
+            int no;
+            while (true)
+            {
+                try
+                {
+                    cout << "Enter Flight Number to remove: ";
+                    no = readInt("Flight Number");
+                    validateID(no, "Flight Number");
+                    break;
+                }
+                catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+            }
+
+            int index = findFlightIndex(no);
+            if (index == -1)
+                throw RecordNotFoundException("Flight");
+
+            for (int j = index; j < count - 1; j++)
+                flights[j] = flights[j + 1];
+
+            count--;
+            rewriteFlightsFile();
+            cout << "Flight removed successfully.\n";
+        }
+        catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+    }
+
+    void viewFlights() const
+    {
+        try
+        {
+            if (count == 0)
+                throw NoRecordsException("flights");
+
+            cout << "\n--- Flight List ---\n";
+            for (int i = 0; i < count; i++)
+                flights[i].display();
+        }
+        catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+    }
+
+    void updateFlightStatus()
+    {
+        try
+        {
+            int no;
+            while (true)
+            {
+                try
+                {
+                    cout << "Enter Flight Number: ";
+                    no = readInt("Flight Number");
+                    validateID(no, "Flight Number");
+                    break;
+                }
+                catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+            }
+
+            int index = findFlightIndex(no);
+            if (index == -1)
+                throw RecordNotFoundException("Flight");
+
+            cout << "1. Scheduled\n"
+                << "2. Taking Off\n"
+                << "3. In Air\n"
+                << "4. Landing\n"
+                << "5. Landed\n";
+
+            int ch;
+            while (true)
+            {
+                try
+                {
+                    cout << "Choice: ";
+                    ch = readInt("Status choice");
+                    if (ch < 1 || ch > 5) throw InvalidMenuChoiceException();
+                    break;
+                }
+                catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+            }
+
+            const string statusLabels[] = { "", "Scheduled", "Taking Off", "In Air", "Landing", "Landed" };
+            flights[index].status = statusLabels[ch];
+
+            rewriteFlightsFile();
+            cout << "Status updated successfully.\n";
+        }
+        catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
