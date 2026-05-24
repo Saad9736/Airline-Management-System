@@ -828,3 +828,123 @@ public:
             cout << "Status updated successfully.\n";
         }
         catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+            }
+
+    void viewFlightsInAir() const
+    {
+        try
+        {
+            if (count == 0)
+                throw NoRecordsException("flights");
+
+            cout << "\n--- Flights Currently In Air ---\n";
+            bool found = false;
+            for (int i = 0; i < count; i++)
+            {
+                if (flights[i].status == "In Air")
+                {
+                    flights[i].display();
+                    found = true;
+                }
+            }
+
+            if (!found)
+                cout << "No flights are currently in the air.\n";
+        }
+        catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+    }
+};
+
+// ============================================================
+//  CREW MANAGER
+// ============================================================
+
+class CrewManager
+{
+public:
+    Crew        crewList[MAX_RECORDS];
+    int         count;
+    FileHandler fh;
+
+    CrewManager() : count(0) { loadCrewFromFile(); }
+
+    // Loads all crew records from disk into memory on startup
+    void loadCrewFromFile()
+    {
+        ifstream file("crew.txt");
+        if (!file.is_open()) return;
+
+        string line;
+        while (getline(file, line) && count < MAX_RECORDS)
+        {
+            try
+            {
+                stringstream ss(line);
+                Crew c;
+                string temp;
+
+                getline(ss, temp, '|');
+                if (temp.empty()) continue;
+
+                c.id = stoi(temp);
+                getline(ss, c.name, '|');
+                getline(ss, c.role);
+
+                crewList[count++] = c;
+            }
+            catch (const invalid_argument&)
+            {
+                cout << "[Load Warning] Skipping corrupt crew record: " << line << "\n";
+            }
+            catch (const out_of_range&)
+            {
+                cout << "[Load Warning] ID out of range in crew record: " << line << "\n";
+            }
+        }
+    }
+
+    // Returns the array index of a crew member by ID, or -1 if not found
+    int findCrewIndex(int id) const
+    {
+        for (int i = 0; i < count; i++)
+            if (crewList[i].id == id) return i;
+        return -1;
+    }
+
+    void addCrew()
+    {
+        try
+        {
+            if (count >= MAX_RECORDS)
+                throw StorageFullException("Crew storage");
+
+            Crew temp;
+            temp.input();
+
+            if (findCrewIndex(temp.id) != -1)
+                throw DuplicateIDException("Crew");
+
+            crewList[count++] = temp;
+            fh.saveCrew(temp);
+            cout << "Crew member added successfully.\n";
+        }
+        catch (const AirlineException& e) { cout << "[Error] " << e.what() << "\n"; }
+    }
+
+    void removeCrew()
+    {
+        try
+        {
+            if (count == 0)
+                throw NoRecordsException("crew members");
+
+            int id;
+            while (true)
+            {
+                try
+                {
+                    cout << "Enter Crew ID to remove: ";
+                    id = readInt("Crew ID");
+                    validateID(id, "Crew ID");
+                    break;
+                }
